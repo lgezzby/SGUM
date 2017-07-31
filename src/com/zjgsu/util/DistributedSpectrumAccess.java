@@ -58,6 +58,10 @@ public class DistributedSpectrumAccess {
     private double[] socialGroupUtility = new double[users];
 
     /**
+     * TODO 单位配平问题:
+     * dBm意即分贝毫瓦，可以作为电压或功率的单位。
+     * dBm=10*lg(mW) 
+     *
      * transmission power 100 mW
      * path loss factor α = 4
      * background interference power for each channel is randomly assigned in the interval of [-100,-90] dBm
@@ -73,7 +77,7 @@ public class DistributedSpectrumAccess {
      *
      * @param delte 物理干扰半径
      */
-    public void computePhysicalEdge(int delte) {
+    private void computePhysicalEdge(int delte) {
         for (int i = 0; i < users; i++) {
             for (int j = 0; j < users; j++) {
                 physicalEdge[i][j] = Math.sqrt(Math.pow((physicalNode[i][0] - physicalNode[j][0]), 2) + Math.pow((physicalNode[i][1] - physicalNode[j][1]), 2));
@@ -105,14 +109,17 @@ public class DistributedSpectrumAccess {
     /**
      * 计算ω
      */
-    public void computeOmega() {
+    private void computeOmega() {
+        /*
+         * 单位是dBm
+         */
         Random random = new Random();
         for (int i = 0; i < spectrumNumber; i++) {
             omega[i] = -100 + random.nextInt(10);
         }
     }
 
-    public  double exponential(Random rng, double mean) {
+    private  double exponential(Random rng, double mean) {
         return -mean*Math.log( rng.nextDouble() );
     }
 
@@ -121,7 +128,7 @@ public class DistributedSpectrumAccess {
      * 产生指数分布的定时器,定时器的均值为1/τ
      * 并初始化updateManager(均置为1)
      */
-    public void computeTimer() {
+    private void computeTimer() {
         Random random = new Random();
         for (int i = 0; i < users; i++) {
             timerManager[i] = exponential(random, 1/tau);
@@ -135,7 +142,7 @@ public class DistributedSpectrumAccess {
      * @param i 需要选择信道的用户i
      * @return 返回选择的信道
      */
-    public int chooseSpectrum(int i) {
+    private int chooseSpectrum(int i) {
         Random random = new Random();
         int arrIdx = random.nextInt(spectrumSet[i].length - 1);
         return spectrumSet[i][arrIdx];
@@ -144,14 +151,14 @@ public class DistributedSpectrumAccess {
     /**
      * 计算势函数 φ = φ1 + φ2
      * @param i user i
-     * @return
+     * @return φ 势函数
      */
     private double computeFai(int i) {
-        double fai = 0.00;
+        double fai;
         double fai1 = 0.00; // part fai1
         double fai2 = 0.00; // part fai2
         for (int n = 0; n < users; n++) {
-            /**
+            /*
              * φ1计算
              */
             fai1 = fai1 + (-omega[chooseSet[n]]);
@@ -160,7 +167,7 @@ public class DistributedSpectrumAccess {
                     fai1 = fai1 + (-0.5 * P * Math.pow(physicalEdge[n][m], -alpha));
                 }
             }
-            /**
+            /*
              * φ2计算
              */
             for (int m = 0; m < users; m++) {
@@ -178,9 +185,10 @@ public class DistributedSpectrumAccess {
      * 计算Un(an,a-n)
      * @param n 用户n
      */
-    public double computeUtility(int n){
+    private double computeUtility(int n){
         double U = 0.00;
-        U = U - omega[chooseSet[n] - 1];
+        // U = U - (omega[chooseSet[n] - 1]);
+        U = U - Math.pow(10,(omega[chooseSet[n] - 1] / 10));
         for (int m = 0; m < users; m++){
             if (physicalSet[n][m] == 1 && chooseSet[n] == chooseSet[m]){
                 U = U - P * Math.pow(physicalEdge[n][m],-alpha);
@@ -193,7 +201,7 @@ public class DistributedSpectrumAccess {
      * 计算Sn(an,a-n)
      * @param n 用户n
      */
-    public double computeSocialGroupUtility(int n){
+    private double computeSocialGroupUtility(int n){
         double S = utility[n];
         for (int m = 0; m < users; m++){
             if (socialSet[n][m] == 1){
@@ -206,7 +214,7 @@ public class DistributedSpectrumAccess {
     /**
      * Sum social group utility
      */
-    public double sumSocialGroupUtility() {
+    private double sumSocialGroupUtility() {
         double sum = 0.00;
         for (int i = 0; i < users; i++){
             sum = sum + socialGroupUtility[i];
@@ -217,46 +225,47 @@ public class DistributedSpectrumAccess {
     /**
      * 算法主体
      */
+
     public void algorithm() {
-        /**
+        /*
          * 设定干扰半径,并计算物理图(physical graph)
          * set interference range
          */
         computePhysicalEdge(delte);
-        /**
+        /*
          * 设定基站干扰
          * set omega
          */
         computeOmega();
-        /**
+        /*
          * 初始化信道选择(各用户随机一个信道)
          * choose a channel randomly for each user n
          */
         for (int i = 0; i < users; i++) {
             chooseSet[i] = chooseSpectrum(i);
         }
-        /**
+        /*
          * 计算物理社会图 physical-social graph
          */
         computePhysicalSocialSet();
-        /**
+        /*
          * 计算timer
          */
         computeTimer();
-        /**
+        /*
          * 计算用户效益
          */
         for (int i = 0; i < users; i++) {
             utility[i] = computeUtility(i);
         }
-        /**
+        /*
          * 计算初始化社会群体效益
          * compute social group utility S(an,a-n)
          */
         for (int i = 0; i < users; i++) {
             socialGroupUtility[i] = computeSocialGroupUtility(i);
         }
-        /**
+        /*
          * 生成定时装置
          * 方法名称schedule()和scheduleAtFixedRate()两者的区别
          * <1>schedule()方法更注重保持间隔时间的稳定：保障每隔period时间可调用一次
@@ -281,7 +290,7 @@ public class DistributedSpectrumAccess {
 
         private int user;
 
-        public SynchroTimerTask(int n) {
+        SynchroTimerTask(int n) {
             this.user = n;
         }
 
@@ -290,7 +299,7 @@ public class DistributedSpectrumAccess {
          */
         @Override
         public void run() {
-            /**
+            /*
              * 记录原始状态
              */
             double probabalityRandom;
@@ -301,21 +310,21 @@ public class DistributedSpectrumAccess {
             double newUtility;
             double oldSocialGroupUtility = socialGroupUtility[user];
             double newSocialGroupUtility;
-            /**
+            /*
              * 重新选择信道(更新信道选择)
              */
             newChooseSet = chooseSpectrum(user);
             chooseSet[user] = newChooseSet;
-            /**
+            /*
              * 计算SGUM
              */
             newUtility = computeUtility(user);
             newSocialGroupUtility = computeSocialGroupUtility(user);
-            /**
+            /*
              * 比较S'(an,a-n) -- S(an,a-n)
              */
             if (newSocialGroupUtility >= oldSocialGroupUtility) {
-                /**
+                /*
                  * 转移,同时修改updateManager为1(表示有内容成功更新)
                  */
                 chooseSet[user] = newChooseSet;
@@ -324,7 +333,7 @@ public class DistributedSpectrumAccess {
 
                 updateManager[user] = 1;
             } else {
-                /**
+                /*
                  * probabalityRandom 返回[0.00,1.00]之间的随机数
                  * 生成转移的概率,概率转移
                  * 同时修改updateManager为0(表示无内容成功更新),且updateManager中内容均为0表示定时器全部需要结束(更新完成)
@@ -334,14 +343,14 @@ public class DistributedSpectrumAccess {
                 probabilityTransition = Math.exp(theta * newSocialGroupUtility)
                         / Math.exp(theta * oldSocialGroupUtility);
                 if (probabalityRandom <= probabilityTransition) {
-                    /**
+                    /*
                      * 若符合概率内,继续转移
                      */
                     chooseSet[user] = newChooseSet;
                     utility[user] = newUtility;
                     socialGroupUtility[user] = newSocialGroupUtility;
                 } else {
-                    /**
+                    /*
                      * 返回原来状态
                      */
                     newChooseSet = oldChooseSet;
@@ -359,10 +368,12 @@ public class DistributedSpectrumAccess {
                 for (int i = 0; i < user; i++){
                     sum = sum + updateManager[i];
                 }
-                if (sum == 0){
+
+                /*if (sum == 0){
                     this.cancel();
                     System.out.println("定时器[" + this.user + "]:此时社会群体效益总和为-->" + sumSocialGroupUtility());
-                }
+                }*/
+                System.out.println("定时器[" + this.user + "]:此时社会群体效益总和为-->" + sumSocialGroupUtility());
             }
 
         }
