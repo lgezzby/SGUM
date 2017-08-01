@@ -20,6 +20,15 @@ public class DistributedSpectrumAccess {
      */
     private static final int spectrumNumber = 5;
     private static final int users = 8;
+    /**
+     * spectrumSet          用户对应的空闲频谱集合
+     * socialSet            社会关系集合(有:1; 无:0)
+     * socialEdge           社会权重集合
+     * physicalNode         物理信息集合
+     * physicalSet          物理关系集合(干扰:1; 无干扰:0)
+     * physicalEdge         物理距离集合
+     * physicalSocialSet    社会物理关系集合(均有关联:1; 其他:0)
+     */
     private static final int[][] spectrumSet = {{1, 2, 3}, {1, 3, 4}, {1, 2, 4}, {1, 2, 3}, {1, 3, 5}, {1, 4, 5}, {1, 2, 5}, {1, 3, 4}};
     private static final double[][] socialEdge = {
             {0, 0, 0, 1.0, 1.0, 0, 0, 0},
@@ -31,28 +40,32 @@ public class DistributedSpectrumAccess {
             {0, 0, 0, 0, 0.9, 0.8, 0, 0},
             {0, 0, 1.0, 0, 1.0, 0, 0, 0}};
     private static final int[][] socialSet = {
-            {0,0,0,1,1,0,0,0},
-            {0,0,0,1,0,0,0,0},
-            {0,0,0,0,0,1,0,1},
-            {1,1,0,0,0,1,0,0},
-            {1,0,0,0,0,0,1,1},
-            {0,0,1,1,0,0,1,0},
-            {0,0,0,0,1,1,0,0},
-            {0,0,1,0,1,0,0,0}};
+            {0, 0, 0, 1, 1, 0, 0, 0},
+            {0, 0, 0, 1, 0, 0, 0, 0},
+            {0, 0, 0, 0, 0, 1, 0, 1},
+            {1, 1, 0, 0, 0, 1, 0, 0},
+            {1, 0, 0, 0, 0, 0, 1, 1},
+            {0, 0, 1, 1, 0, 0, 1, 0},
+            {0, 0, 0, 0, 1, 1, 0, 0},
+            {0, 0, 1, 0, 1, 0, 0, 0}};
     private static final int[][] physicalNode = {
             {100, 100}, {400, 100}, {200, 200}, {300, 200}, {200, 300}, {400, 300}, {100, 400}, {400, 400}};
     private int[][] physicalSet = new int[users][users];
     private double[][] physicalEdge = new double[users][users];
     private int[][] physicalSocialSet = new int[users][users];
+    /**
+     * timerManager     定时器信息
+     * updateManager    更新状况信息
+     */
     private double[] timerManager = new double[users];
     private int[] updateManager = new int[users];
     /**
-     * 信道选择
+     * chooseSet    信道选择
      */
     private int[] chooseSet = new int[users];
     /**
-     * user utility
-     * social group utility
+     * utility              用户效益
+     * socialGroupUtility   社会群体效益
      */
     private double[] utility = new double[users];
     private double[] socialGroupUtility = new double[users];
@@ -64,7 +77,8 @@ public class DistributedSpectrumAccess {
      *
      * transmission power 100 mW
      * path loss factor α = 4
-     * background interference power for each channel is randomly assigned in the interval of [-100,-90] dBm
+     * background interference power for each channel is randomly assigned in the interval of [-100,-90] dBm]
+     *
      * transmission range δ = 500 m
      */
     private static final int P = 100;
@@ -99,8 +113,8 @@ public class DistributedSpectrumAccess {
      * 值为1:同时存在物理关联和社会联系
      */
     private void computePhysicalSocialSet() {
-        for (int i = 0; i < users; i++){
-            for (int j = 0; j < users; j++){
+        for (int i = 0; i < users; i++) {
+            for (int j = 0; j < users; j++) {
                 physicalSocialSet[i][j] = physicalSet[i][j] * socialSet[i][j];
             }
         }
@@ -119,8 +133,8 @@ public class DistributedSpectrumAccess {
         }
     }
 
-    private  double exponential(Random rng, double mean) {
-        return -mean*Math.log( rng.nextDouble() );
+    private double exponential(Random rng, double mean) {
+        return -mean * Math.log(rng.nextDouble());
     }
 
     /**
@@ -131,7 +145,7 @@ public class DistributedSpectrumAccess {
     private void computeTimer() {
         Random random = new Random();
         for (int i = 0; i < users; i++) {
-            timerManager[i] = exponential(random, 1/tau);
+            timerManager[i] = exponential(random, 1 / tau);
             updateManager[i] = 1;
         }
     }
@@ -150,6 +164,7 @@ public class DistributedSpectrumAccess {
 
     /**
      * 计算势函数 φ = φ1 + φ2
+     *
      * @param i user i
      * @return φ 势函数
      */
@@ -183,15 +198,16 @@ public class DistributedSpectrumAccess {
 
     /**
      * 计算Un(an,a-n)
+     *
      * @param n 用户n
      */
-    private double computeUtility(int n){
+    private double computeUtility(int n) {
         double U = 0.00;
         // U = U - (omega[chooseSet[n] - 1]);
-        U = U - Math.pow(10,(omega[chooseSet[n] - 1] / 10));
-        for (int m = 0; m < users; m++){
-            if (physicalSet[n][m] == 1 && chooseSet[n] == chooseSet[m]){
-                U = U - P * Math.pow(physicalEdge[n][m],-alpha);
+        U = U - Math.pow(10, (omega[chooseSet[n] - 1] / 10));
+        for (int m = 0; m < users; m++) {
+            if (physicalSet[n][m] == 1 && chooseSet[n] == chooseSet[m]) {
+                U = U - P * Math.pow(physicalEdge[n][m], -alpha);
             }
         }
         return U;
@@ -199,12 +215,13 @@ public class DistributedSpectrumAccess {
 
     /**
      * 计算Sn(an,a-n)
+     *
      * @param n 用户n
      */
-    private double computeSocialGroupUtility(int n){
+    private double computeSocialGroupUtility(int n) {
         double S = utility[n];
-        for (int m = 0; m < users; m++){
-            if (socialSet[n][m] == 1){
+        for (int m = 0; m < users; m++) {
+            if (socialSet[n][m] == 1) {
                 S = S + socialEdge[n][m] * utility[m];
             }
         }
@@ -216,7 +233,7 @@ public class DistributedSpectrumAccess {
      */
     private double sumSocialGroupUtility() {
         double sum = 0.00;
-        for (int i = 0; i < users; i++){
+        for (int i = 0; i < users; i++) {
             sum = sum + socialGroupUtility[i];
         }
         return sum;
@@ -271,10 +288,10 @@ public class DistributedSpectrumAccess {
          * <1>schedule()方法更注重保持间隔时间的稳定：保障每隔period时间可调用一次
          * <2>scheduleAtFixedRate()方法更注重保持执行频率的稳定：保障多次调用的频率趋近于period时间，如果任务执行时间大于period，会在任务执行之后马上执行下一次任务
          */
-        for (int i = 0; i < users; i++){
+        for (int i = 0; i < users; i++) {
             TimerTask task = new SynchroTimerTask(i);
             Timer timer = new Timer();
-            timer.schedule(task, 0, (long) timerManager[i] == 0?1:(long) timerManager[i]);
+            timer.schedule(task, 0, (long) timerManager[i] == 0 ? 1 : (long) timerManager[i]);
         }
 
     }
@@ -362,10 +379,9 @@ public class DistributedSpectrumAccess {
                 }
 
 
-
                 updateManager[user] = 0;
                 int sum = 0;
-                for (int i = 0; i < user; i++){
+                for (int i = 0; i < user; i++) {
                     sum = sum + updateManager[i];
                 }
 
