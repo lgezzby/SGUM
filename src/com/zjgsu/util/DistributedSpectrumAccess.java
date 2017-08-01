@@ -6,22 +6,27 @@ import java.util.TimerTask;
 
 
 /**
+ * 《Exploiting Social Tie Structure for Cooperative Wireless Networking: A Social Group Utility Maximization Framework》
  * Distributed Spectrum Access Algorithm For Social Group Utility Maximization
  */
 public class DistributedSpectrumAccess {
+    /**
+     * 传递参数sumSocial;
+     */
+    private static double sumSocial = 0.00;
     /**
      * Initialization:
      * 1.初始化参数θ = 10^6 和 信道更新率τ(怎么取)
      */
     private static final double theta = 1000000;
-    private static final double tau = 0.1;
+    private static final double tau = 0.01;
     /**
      * 2.初始化 a square are of a length of 500m with 8 scattered white-space users
      */
     private static final int spectrumNumber = 5;
     private static final int users = 8;
     /**
-     * spectrumSet          用户对应的空闲频谱集合
+     * spectrumSet          用户对应的空闲频谱集合(set of vacant channels)
      * socialSet            社会关系集合(有:1; 无:0)
      * socialEdge           社会权重集合
      * physicalNode         物理信息集合
@@ -29,16 +34,7 @@ public class DistributedSpectrumAccess {
      * physicalEdge         物理距离集合
      * physicalSocialSet    社会物理关系集合(均有关联:1; 其他:0)
      */
-    private static final int[][] spectrumSet = {{1, 2, 3}, {1, 3, 4}, {1, 2, 4}, {1, 2, 3}, {1, 3, 5}, {1, 4, 5}, {1, 2, 5}, {1, 3, 4}};
-    private static final double[][] socialEdge = {
-            {0, 0, 0, 1.0, 1.0, 0, 0, 0},
-            {0, 0, 0, 0.9, 0, 0, 0, 0},
-            {0, 0, 0, 0, 0, 0.7, 0, 1.0},
-            {1.0, 0.9, 0, 0, 0, 1.0, 0, 0},
-            {1.0, 0, 0, 0, 0, 0, 0.9, 1.0},
-            {0, 0, 0.7, 1.0, 0, 0, 0.8, 0},
-            {0, 0, 0, 0, 0.9, 0.8, 0, 0},
-            {0, 0, 1.0, 0, 1.0, 0, 0, 0}};
+    private static final int[][] spectrumSet = {{2, 3, 4}, {1, 3, 4}, {1, 2, 4}, {1, 2, 3}, {1, 3, 5}, {1, 4, 5}, {1, 2, 5}, {1, 3, 4}};
     private static final int[][] socialSet = {
             {0, 0, 0, 1, 1, 0, 0, 0},
             {0, 0, 0, 1, 0, 0, 0, 0},
@@ -48,6 +44,15 @@ public class DistributedSpectrumAccess {
             {0, 0, 1, 1, 0, 0, 1, 0},
             {0, 0, 0, 0, 1, 1, 0, 0},
             {0, 0, 1, 0, 1, 0, 0, 0}};
+    private static final double[][] socialEdge = {
+            {0, 0, 0, 1.0, 1.0, 0, 0, 0},
+            {0, 0, 0, 0.9, 0, 0, 0, 0},
+            {0, 0, 0, 0, 0, 0.7, 0, 1.0},
+            {1.0, 0.9, 0, 0, 0, 1.0, 0, 0},
+            {1.0, 0, 0, 0, 0, 0, 0.9, 1.0},
+            {0, 0, 0.7, 1.0, 0, 0, 0.8, 0},
+            {0, 0, 0, 0, 0.9, 0.8, 0, 0},
+            {0, 0, 1.0, 0, 1.0, 0, 0, 0}};
     private static final int[][] physicalNode = {
             {100, 100}, {400, 100}, {200, 200}, {300, 200}, {200, 300}, {400, 300}, {100, 400}, {400, 400}};
     private int[][] physicalSet = new int[users][users];
@@ -67,38 +72,38 @@ public class DistributedSpectrumAccess {
      * utility              用户效益
      * socialGroupUtility   社会群体效益
      */
-    private double[] utility = new double[users];
-    private double[] socialGroupUtility = new double[users];
+    private static double[] utility = new double[users];
+    private static double[] socialGroupUtility = new double[users];
 
     /**
      * TODO 单位配平问题:
      * dBm意即分贝毫瓦，可以作为电压或功率的单位。
      * dBm=10*lg(mW) 
-     *
-     * transmission power 100 mW
+     * <p>
+     * transmission power 100 mW (same power level)
      * path loss factor α = 4
      * background interference power for each channel is randomly assigned in the interval of [-100,-90] dBm]
-     *
+     * <p>
      * transmission range δ = 500 m
      */
     private static final int P = 100;
     private static final double alpha = 4;
     private double[] omega = new double[users];
-    private static final int delte = 500;
+    private static final int delta = 500;
 
     /**
      * 设定物理干扰半径,计算影响集
      *
-     * @param delte 物理干扰半径
+     * @param delta 物理干扰半径
      */
-    private void computePhysicalEdge(int delte) {
+    private void computePhysicalEdge(int delta) {
         for (int i = 0; i < users; i++) {
             for (int j = 0; j < users; j++) {
                 physicalEdge[i][j] = Math.sqrt(Math.pow((physicalNode[i][0] - physicalNode[j][0]), 2) + Math.pow((physicalNode[i][1] - physicalNode[j][1]), 2));
                 if (i == j) {
                     physicalSet[i][j] = 0;
                 } else {
-                    if (physicalEdge[i][j] <= delte) {
+                    if (physicalEdge[i][j] <= delta) {
                         physicalSet[i][j] = 1;
                     } else {
                         physicalSet[i][j] = 0;
@@ -165,18 +170,19 @@ public class DistributedSpectrumAccess {
     /**
      * 计算势函数 φ = φ1 + φ2
      *
-     * @param i user i
      * @return φ 势函数
      */
-    private double computeFai(int i) {
+    private double computeFai() {
         double fai;
         double fai1 = 0.00; // part fai1
         double fai2 = 0.00; // part fai2
         for (int n = 0; n < users; n++) {
+            fai1 = 0.00; // part fai1
+            fai2 = 0.00; // part fai2
             /*
              * φ1计算
              */
-            fai1 = fai1 + (-omega[chooseSet[n]]);
+            fai1 = fai1 + (-Math.pow(10, (omega[chooseSet[n] - 1] / 10)));
             for (int m = 0; m < users; m++) {
                 if (physicalSet[n][m] == 1 && chooseSet[n] == chooseSet[m]) {
                     fai1 = fai1 + (-0.5 * P * Math.pow(physicalEdge[n][m], -alpha));
@@ -198,6 +204,7 @@ public class DistributedSpectrumAccess {
 
     /**
      * 计算Un(an,a-n)
+     * U = -γ = - ΣP * d^-α * I - ω^n
      *
      * @param n 用户n
      */
@@ -248,7 +255,7 @@ public class DistributedSpectrumAccess {
          * 设定干扰半径,并计算物理图(physical graph)
          * set interference range
          */
-        computePhysicalEdge(delte);
+        computePhysicalEdge(delta);
         /*
          * 设定基站干扰
          * set omega
@@ -316,83 +323,99 @@ public class DistributedSpectrumAccess {
          */
         @Override
         public void run() {
+            doTimeTask(this.user);
+        }
+
+        /**
+         * 加锁
+         */
+
+    }
+
+    public synchronized void doTimeTask(int user) {
             /*
              * 记录原始状态
              */
-            double probabalityRandom;
-            double probabilityTransition;
-            int oldChooseSet = chooseSet[user];
-            int newChooseSet;
-            double oldUtility = utility[user];
-            double newUtility;
-            double oldSocialGroupUtility = socialGroupUtility[user];
-            double newSocialGroupUtility;
+        double probabalityRandom;
+        double probabilityTransition;
+        int oldChooseSet = chooseSet[user];
+        int newChooseSet;
+        double oldUtility = utility[user];
+        double newUtility;
+        double oldSocialGroupUtility = socialGroupUtility[user];
+        double newSocialGroupUtility;
             /*
              * 重新选择信道(更新信道选择)
              */
-            newChooseSet = chooseSpectrum(user);
-            chooseSet[user] = newChooseSet;
+        newChooseSet = chooseSpectrum(user);
+        chooseSet[user] = newChooseSet;
             /*
              * 计算SGUM
              */
-            newUtility = computeUtility(user);
-            newSocialGroupUtility = computeSocialGroupUtility(user);
+        newUtility = computeUtility(user);
+        newSocialGroupUtility = computeSocialGroupUtility(user);
             /*
              * 比较S'(an,a-n) -- S(an,a-n)
              */
-            if (newSocialGroupUtility >= oldSocialGroupUtility) {
+        if (newSocialGroupUtility >= oldSocialGroupUtility) {
                 /*
                  * 转移,同时修改updateManager为1(表示有内容成功更新)
                  */
-                chooseSet[user] = newChooseSet;
-                utility[user] = newUtility;
-                socialGroupUtility[user] = newSocialGroupUtility;
+            chooseSet[user] = newChooseSet;
+            utility[user] = newUtility;
+            socialGroupUtility[user] = newSocialGroupUtility;
 
-                updateManager[user] = 1;
-            } else {
+            updateManager[user] = 1;
+        } else {
                 /*
                  * probabalityRandom 返回[0.00,1.00]之间的随机数
                  * 生成转移的概率,概率转移
                  * 同时修改updateManager为0(表示无内容成功更新),且updateManager中内容均为0表示定时器全部需要结束(更新完成)
                  */
-                Random random = new Random();
-                probabalityRandom = random.nextDouble();
-                probabilityTransition = Math.exp(theta * newSocialGroupUtility)
-                        / Math.exp(theta * oldSocialGroupUtility);
-                if (probabalityRandom <= probabilityTransition) {
+            Random random = new Random();
+            probabalityRandom = random.nextDouble();
+            probabilityTransition = Math.exp(theta * newSocialGroupUtility)
+                    / Math.exp(theta * oldSocialGroupUtility);
+            if (probabalityRandom <= probabilityTransition) {
                     /*
                      * 若符合概率内,继续转移
                      */
-                    chooseSet[user] = newChooseSet;
-                    utility[user] = newUtility;
-                    socialGroupUtility[user] = newSocialGroupUtility;
-                } else {
+                chooseSet[user] = newChooseSet;
+                utility[user] = newUtility;
+                socialGroupUtility[user] = newSocialGroupUtility;
+            } else {
                     /*
                      * 返回原来状态
                      */
-                    newChooseSet = oldChooseSet;
-                    newUtility = oldUtility;
-                    newSocialGroupUtility = oldSocialGroupUtility;
-                    chooseSet[user] = newChooseSet;
-                    utility[user] = newUtility;
-                    socialGroupUtility[user] = newSocialGroupUtility;
-                }
+                newChooseSet = oldChooseSet;
+                newUtility = oldUtility;
+                newSocialGroupUtility = oldSocialGroupUtility;
+                chooseSet[user] = newChooseSet;
+                utility[user] = newUtility;
+                socialGroupUtility[user] = newSocialGroupUtility;
+            }
+        }
 
 
-                updateManager[user] = 0;
+
+                /*updateManager[user] = 0;
                 int sum = 0;
                 for (int i = 0; i < user; i++) {
                     sum = sum + updateManager[i];
-                }
+                }*/
 
                 /*if (sum == 0){
                     this.cancel();
                     System.out.println("定时器[" + this.user + "]:此时社会群体效益总和为-->" + sumSocialGroupUtility());
                 }*/
-                System.out.println("定时器[" + this.user + "]:此时社会群体效益总和为-->" + sumSocialGroupUtility());
-            }
+        sumSocial = sumSocialGroupUtility();
+        System.out.println("定时器[" + user + "]:此时社会群体效益总和为-->" + sumSocial);
+    }
 
-        }
-
+    /**
+     * 传递数据
+     */
+    public static double transitionData() {
+        return sumSocial;
     }
 }
