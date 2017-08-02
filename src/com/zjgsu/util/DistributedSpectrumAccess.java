@@ -18,7 +18,7 @@ public class DistributedSpectrumAccess {
      * Initialization:
      * 1.初始化参数θ = 10^6 和 信道更新率τ(怎么取)
      */
-    private static final double theta = 1000000;
+    private static final double theta = 10 * Math.pow(10,6);
     private static final double tau = 0.01;
     /**
      * 2.初始化 a square are of a length of 500m with 8 scattered white-space users
@@ -88,7 +88,7 @@ public class DistributedSpectrumAccess {
      */
     private static final int P = 100;
     private static final double alpha = 4;
-    private double[] omega = new double[users];
+    private double[] omega = new double[spectrumNumber];
     private static final int delta = 500;
 
     /**
@@ -151,7 +151,7 @@ public class DistributedSpectrumAccess {
         Random random = new Random();
         for (int i = 0; i < users; i++) {
             timerManager[i] = exponential(random, 1 / tau);
-            updateManager[i] = 1;
+//            updateManager[i] = 1;
         }
     }
 
@@ -295,10 +295,12 @@ public class DistributedSpectrumAccess {
          * <1>schedule()方法更注重保持间隔时间的稳定：保障每隔period时间可调用一次
          * <2>scheduleAtFixedRate()方法更注重保持执行频率的稳定：保障多次调用的频率趋近于period时间，如果任务执行时间大于period，会在任务执行之后马上执行下一次任务
          */
-        for (int i = 0; i < users; i++) {
-            TimerTask task = new SynchroTimerTask(i);
-            Timer timer = new Timer();
-            timer.schedule(task, 0, (long) timerManager[i] == 0 ? 1 : (long) timerManager[i]);
+        while (true) {
+            for (int i = 0; i < users; i++) {
+                TimerTask task = new SynchroTimerTask(i);
+                Timer timer = new Timer();
+                timer.schedule(task, 0, (long) timerManager[i] == 0 ? 1 : (long) timerManager[i]);
+            }
         }
 
     }
@@ -323,7 +325,10 @@ public class DistributedSpectrumAccess {
          */
         @Override
         public void run() {
-            doTimeTask(this.user);
+            synchronized (this){
+                doTimeTask(this.user);
+            }
+            this.cancel();
         }
 
         /**
@@ -336,7 +341,7 @@ public class DistributedSpectrumAccess {
             /*
              * 记录原始状态
              */
-        double probabalityRandom;
+        double probabilityRandom;
         double probabilityTransition;
         int oldChooseSet = chooseSet[user];
         int newChooseSet;
@@ -348,12 +353,17 @@ public class DistributedSpectrumAccess {
              * 重新选择信道(更新信道选择)
              */
         newChooseSet = chooseSpectrum(user);
+        while (newChooseSet == oldChooseSet){
+            newChooseSet = chooseSpectrum(user);
+        }
         chooseSet[user] = newChooseSet;
             /*
              * 计算SGUM
              */
         newUtility = computeUtility(user);
+        utility[user] = newUtility;
         newSocialGroupUtility = computeSocialGroupUtility(user);
+        socialGroupUtility[user] = newSocialGroupUtility;
             /*
              * 比较S'(an,a-n) -- S(an,a-n)
              */
@@ -364,8 +374,11 @@ public class DistributedSpectrumAccess {
             chooseSet[user] = newChooseSet;
             utility[user] = newUtility;
             socialGroupUtility[user] = newSocialGroupUtility;
+            for (int i = 0; i < users; i++) {
+                socialGroupUtility[i] = computeUtility(i);
+            }
 
-            updateManager[user] = 1;
+//            updateManager[user] = 1;
         } else {
                 /*
                  * probabalityRandom 返回[0.00,1.00]之间的随机数
@@ -373,26 +386,29 @@ public class DistributedSpectrumAccess {
                  * 同时修改updateManager为0(表示无内容成功更新),且updateManager中内容均为0表示定时器全部需要结束(更新完成)
                  */
             Random random = new Random();
-            probabalityRandom = random.nextDouble();
+            probabilityRandom = random.nextDouble();
             probabilityTransition = Math.exp(theta * newSocialGroupUtility)
                     / Math.exp(theta * oldSocialGroupUtility);
-            if (probabalityRandom <= probabilityTransition) {
+            if (probabilityRandom <= probabilityTransition) {
                     /*
                      * 若符合概率内,继续转移
                      */
                 chooseSet[user] = newChooseSet;
                 utility[user] = newUtility;
                 socialGroupUtility[user] = newSocialGroupUtility;
+                for (int i = 0; i < users; i++) {
+                    socialGroupUtility[i] = computeUtility(i);
+                }
             } else {
                     /*
                      * 返回原来状态
                      */
-                newChooseSet = oldChooseSet;
+                /*newChooseSet = oldChooseSet;
                 newUtility = oldUtility;
-                newSocialGroupUtility = oldSocialGroupUtility;
-                chooseSet[user] = newChooseSet;
-                utility[user] = newUtility;
-                socialGroupUtility[user] = newSocialGroupUtility;
+                newSocialGroupUtility = oldSocialGroupUtility;*/
+                chooseSet[user] = oldChooseSet;
+                utility[user] = oldUtility;
+                socialGroupUtility[user] = oldSocialGroupUtility;
             }
         }
 
