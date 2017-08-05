@@ -1,4 +1,4 @@
-package com.zjgsu.util;
+package com.zjgsu.util.DSA;
 
 import java.util.Random;
 import java.util.Timer;

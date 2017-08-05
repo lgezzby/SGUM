@@ -17,5 +17,20 @@
         <jarDirectory url="file://$USER_HOME$/Downloads/jfreechart-1.0.19/lib" recursive="false" />
       </library>
     </orderEntry>
+    <orderEntry type="module-library">
+      <library>
+        <CLASSES>
+          <root url="file://$USER_HOME$/Downloads/commons-lang3-3.6" />
+        </CLASSES>
+        <JAVADOC>
+          <root url="file://$USER_HOME$/Downloads/commons-lang3-3.6/apidocs" />
+        </JAVADOC>
+        <SOURCES>
+          <root url="file://$USER_HOME$/Downloads/commons-lang3-3.6" />
+        </SOURCES>
+        <jarDirectory url="file://$USER_HOME$/Downloads/commons-lang3-3.6" recursive="false" />
+        <jarDirectory url="file://$USER_HOME$/Downloads/commons-lang3-3.6" recursive="false" type="SOURCES" />
+      </library>
+    </orderEntry>
   </component>
 </module>

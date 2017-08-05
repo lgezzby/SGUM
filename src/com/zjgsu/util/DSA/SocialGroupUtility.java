@@ -1,4 +1,4 @@
-package com.zjgsu.util;
+package com.zjgsu.util.DSA;
 
 import org.jfree.chart.ChartPanel;
 import org.jfree.chart.JFreeChart;
