@@ -81,13 +81,13 @@ public class SAPCG {
         double utility = 0.00;
         for (int j = 0; j < users; j++) {
             if (physicalSet[j][i] == 1 && ArrayUtils.contains(N_now,j+1)) {
-                utility = utility + chooseSet[j];
+                utility = utility + 1;
             }
         }
         utility = utility - physicalCost[i];
         for (int j = 0; j < users; j++) {
-            if (socialSet[i][j] == 1 && ArrayUtils.contains(N_now,j+1)) {
-                utility = utility + socialEdge[i][j] * chooseSet[j];
+            if (socialSet[i][j] == 1 && !ArrayUtils.contains(N_,j+1)) {
+                utility = utility + socialEdge[i][j] * 1;
             }
         }
         return utility;
@@ -95,6 +95,7 @@ public class SAPCG {
 
     public void algorithm(){
         N_ = N;
+        N_now = N;
         /*
          * repeat until N1 ∪ N2 = ∅
          */
@@ -106,7 +107,7 @@ public class SAPCG {
                 chooseSet[N_[i] - 1] = 1;
             }
             N1 = N_;
-            N_now = N1;
+
             /*
              * Phase I
              * {N_[i]}倾向于不参与PCG
@@ -118,7 +119,9 @@ public class SAPCG {
                     N_now = ArrayUtils.removeElement(N_now, N_[i]);
                 }
             }
-
+            if (!ArrayUtils.isEmpty(N1)) {
+                System.out.println("Phase I:{" + Arrays.toString(N1) + "}");
+            }
             /*
              * Phase II
              * {N_[i]}倾向于参与PCG
@@ -131,12 +134,16 @@ public class SAPCG {
             for (int i = 0; i < N_.length; i++) {
                 if (computeUtility(N_[i] - 1) >= 0) {
                     chooseSet[N_[i] - 1] = 1;
-                    N_ = ArrayUtils.removeElement(N_, N_[i]);
                     N2 = ArrayUtils.add(N2, N_[i]);
                     N_now = ArrayUtils.add(N_now, N_[i]);
+                    N_ = ArrayUtils.removeElement(N_, N_[i]);
+                    i--;
                 }
             }
-        }while (N1 == null && N2 == null);
+            if (!ArrayUtils.isEmpty(N2)) {
+                System.out.println("Phase II:{" + Arrays.toString(N2) + "}");
+            }
+        }while (!ArrayUtils.isEmpty(N1) || !ArrayUtils.isEmpty(N2));
 
         System.out.println(Arrays.toString(chooseSet));
     }
